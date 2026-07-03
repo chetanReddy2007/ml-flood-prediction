@@ -25,7 +25,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 # ─────────────────────────────────────────────────────────────────────────────
 # INITIALISATION
 # ─────────────────────────────────────────────────────────────────────────────
-app = Flask(__name__)
+app = Flask(__name__, template_folder="Templates")
 app.secret_key = os.environ.get("SECRET_KEY", "flood-prediction-secret-2024")
 
 # Paths to persisted artefacts (relative to this file)
