@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Flood prediction result — see your flood risk assessment and confidence score." />
+  <title>FloodSense | Prediction Result</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:      #050b18;
+      --surface: #0d1526;
+      --surface2:#111e35;
+      --border:  rgba(99,179,237,0.12);
+      --accent:  #63b3ed;
+      --text:    #e2e8f0;
+      --muted:   #718096;
+      --glow:    rgba(99,179,237,0.15);
+
+      /* Risk-specific (overridden by JS / Jinja) */
+      --risk-from: #7f1d1d;
+      --risk-to:   #991b1b;
+      --risk-border: rgba(252,129,129,0.3);
+      --risk-color:  #fc8181;
+      --risk-glow:   rgba(239,68,68,0.2);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #bgCanvas {
+      position: fixed; top:0; left:0;
+      width:100%; height:100%;
+      z-index:0; pointer-events:none; opacity:0.4;
+    }
+
+    /* ── Navbar ──────────────────────────────────────────────────────── */
+    .navbar {
+      position: sticky; top:0; z-index:1000;
+      background: rgba(5,11,24,0.85) !important;
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 0;
+    }
+    .navbar-brand { font-weight:900; font-size:1.5rem; letter-spacing:-1px; color:#fff !important; }
+    .navbar-brand .brand-flood { color:var(--accent); }
+    .nav-link { color:var(--muted) !important; font-weight:500; font-size:0.9rem; padding:0.5rem 1rem !important; border-radius:8px; transition:all .2s; }
+    .nav-link:hover { color:var(--accent) !important; background:var(--glow); }
+
+    /* ── Page wrapper ─────────────────────────────────────────────────── */
+    .page-wrap { position:relative; z-index:1; padding: 4rem 0 5rem; }
+
+    /* ── Breadcrumb ───────────────────────────────────────────────────── */
+    .breadcrumb-row {
+      display:flex; align-items:center; gap:0.5rem;
+      font-size:0.8rem; color:var(--muted); margin-bottom:2rem;
+    }
+    .breadcrumb-row a { color:var(--accent); text-decoration:none; }
+    .breadcrumb-row a:hover { text-decoration:underline; }
+    .breadcrumb-row .sep { color:rgba(255,255,255,0.15); }
+
+    /* ── Big result card ──────────────────────────────────────────────── */
+    .result-card {
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid var(--risk-border);
+      box-shadow: 0 0 80px var(--risk-glow), 0 24px 64px rgba(0,0,0,0.6);
+      margin-bottom: 1.5rem;
+      animation: cardIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes cardIn {
+      from { transform:translateY(30px) scale(0.97); opacity:0; }
+      to   { transform:translateY(0)    scale(1);    opacity:1; }
+    }
+
+    .result-hero {
+      background: linear-gradient(135deg, var(--risk-from), var(--risk-to));
+      padding: 3rem 2.5rem 2.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .result-hero::before {
+      content:'';
+      position:absolute; inset:0;
+      background: radial-gradient(ellipse at 50% -30%, rgba(255,255,255,0.06), transparent 70%);
+    }
+    .result-icon-wrap {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.15);
+      display: flex; align-items:center; justify-content:center;
+      margin: 0 auto 1.5rem;
+      font-size: 2.8rem;
+      animation: iconPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes iconPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.1); }
+      50%      { box-shadow: 0 0 0 16px rgba(255,255,255,0); }
+    }
+    .result-verdict {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      line-height: 1.1;
+    }
+    .result-desc {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.65);
+      max-width: 360px;
+      margin: 0 auto 2rem;
+      line-height: 1.6;
+    }
+
+    /* Confidence meter */
+    .conf-wrap { max-width: 320px; margin: 0 auto; }
+    .conf-label-row {
+      display:flex; justify-content:space-between;
+      font-size:0.75rem; color:rgba(255,255,255,0.55);
+      margin-bottom: 0.5rem;
+      font-weight: 600; text-transform:uppercase; letter-spacing:0.06em;
+    }
+    .conf-label-row strong { color:#fff; font-size:1rem; }
+    .conf-track {
+      height: 10px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .conf-fill {
+      height:100%; border-radius:100px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.4), rgba(255,255,255,0.9));
+      width: 0%;
+      transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* Recommendation tags */
+    .rec-tags {
+      display:flex; flex-wrap:wrap; justify-content:center; gap:0.5rem;
+      margin-top: 1.75rem;
+    }
+    .rec-tag {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius:100px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      display:flex; align-items:center; gap:0.35rem;
+    }
+
+    /* Parameters table section */
+    .params-section {
+      background: var(--surface);
+      padding: 2rem 2.5rem;
+      border-top: 1px solid var(--risk-border);
+    }
+    .params-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.25rem;
+    }
+    .params-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .param-cell {
+      background: var(--surface2);
+      padding: 1rem 1.1rem;
+      transition: background 0.15s;
+    }
+    .param-cell:hover { background: #172035; }
+    .param-cell-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.3rem;
+    }
+    .param-cell-value {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Back button ──────────────────────────────────────────────────── */
+    .btn-back {
+      display:inline-flex; align-items:center; gap:0.6rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1.75rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-back:hover {
+      background: var(--surface2);
+      border-color: rgba(99,179,237,0.35);
+      color: var(--accent);
+      transform: translateX(-3px);
+    }
+    .btn-new {
+      display:inline-flex; align-items:center; gap:0.6rem;
+      background: linear-gradient(135deg, #4299e1, #9f7aea);
+      border: none;
+      border-radius: 12px;
+      padding: 0.85rem 1.75rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(66,153,225,0.3);
+    }
+    .btn-new:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(66,153,225,0.45);
+      color: #fff;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+    footer {
+      position:relative; z-index:1;
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 0;
+      text-align:center;
+      color:var(--muted); font-size:0.82rem;
+    }
+    footer a { color:var(--accent); text-decoration:none; }
+    footer a:hover { text-decoration:underline; }
+
+    @media (max-width:575px) {
+      .result-hero { padding:2rem 1.5rem 1.75rem; }
+      .params-section { padding:1.5rem; }
+      .action-row { flex-direction:column; }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- ── Navbar ───────────────────────────────────────────────────────────── -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-water me-2" style="color:var(--accent)"></i>
+        <span class="brand-flood">Flood</span>Sense
+      </a>
+      <div class="d-flex">
+        <ul class="navbar-nav gap-1">
+          <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-grid-1x2-fill me-1"></i>Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="/about"><i class="bi bi-info-circle me-1"></i>About</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Page content ─────────────────────────────────────────────────────── -->
+  <div class="page-wrap">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-7 col-xl-6">
+
+          <!-- Breadcrumb -->
+          <div class="breadcrumb-row">
+            <a href="/"><i class="bi bi-house-door me-1"></i>Dashboard</a>
+            <span class="sep">›</span>
+            <span>Prediction Result</span>
+          </div>
+
+          <!-- ── Result card ──────────────────────────────────────────── -->
+          <div class="result-card" id="resultCard">
+
+            <!-- Hero -->
+            <div class="result-hero" id="resultHero">
+              <div class="result-icon-wrap" id="resultIcon"></div>
+              <div class="result-verdict">{{ prediction }}</div>
+              <p class="result-desc">
+                {% if risk_class == 'danger' %}
+                  Conditions indicate a significant probability of flooding. Immediate precautionary action is advised.
+                {% else %}
+                  Current conditions are within safe parameters. Continue monitoring for any changes.
+                {% endif %}
+              </p>
+
+              <!-- Confidence meter -->
+              <div class="conf-wrap">
+                <div class="conf-label-row">
+                  <span>Model Confidence</span>
+                  <strong>{{ confidence }}%</strong>
+                </div>
+                <div class="conf-track">
+                  <div class="conf-fill" id="confFill"></div>
+                </div>
+              </div>
+
+              <!-- Recommendation tags -->
+              <div class="rec-tags">
+                {% if risk_class == 'danger' %}
+                  <span class="rec-tag"><i class="bi bi-alarm"></i> Issue Early Warning</span>
+                  <span class="rec-tag"><i class="bi bi-house-door"></i> Prepare Evacuation</span>
+                  <span class="rec-tag"><i class="bi bi-telephone"></i> Alert Authorities</span>
+                {% else %}
+                  <span class="rec-tag"><i class="bi bi-check2-circle"></i> Conditions Normal</span>
+                  <span class="rec-tag"><i class="bi bi-eye"></i> Continue Monitoring</span>
+                  <span class="rec-tag"><i class="bi bi-calendar-check"></i> Reassess Weekly</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="params-section">
+              <div class="params-title"><i class="bi bi-sliders me-1"></i> Input Parameters Used</div>
+              <div class="params-grid">
+                {% for label, value in input_summary.items() %}
+                <div class="param-cell">
+                  <div class="param-cell-label">{{ label }}</div>
+                  <div class="param-cell-value">{{ value }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+          </div><!-- /result-card -->
+
+          <!-- Action buttons -->
+          <div class="action-row d-flex gap-3 justify-content-center flex-wrap mt-1">
+            <a href="/" class="btn-back">
+              <i class="bi bi-arrow-left"></i> Go Back
+            </a>
+            <a href="/" class="btn-new">
+              <i class="bi bi-lightning-charge-fill"></i> New Prediction
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="container">
+      &copy; 2024 <strong style="color:var(--text)">FloodSense</strong> &mdash;
+      ML-Powered Early Warning System &nbsp;&bull;&nbsp;
+      <a href="/about">About</a>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  /* ── Set risk-specific colours from Jinja variable ─────────────────────── */
+  const riskClass = "{{ risk_class }}";
+  const isDanger  = riskClass === 'danger';
+
+  const root = document.documentElement;
+  if (isDanger) {
+    root.style.setProperty('--risk-from',   '#2d0a0a');
+    root.style.setProperty('--risk-to',     '#3d1111');
+    root.style.setProperty('--risk-border', 'rgba(252,129,129,0.25)');
+    root.style.setProperty('--risk-glow',   'rgba(239,68,68,0.18)');
+    document.getElementById('resultIcon').innerHTML = '<i class="bi bi-exclamation-triangle-fill" style="color:#fc8181"></i>';
+  } else {
+    root.style.setProperty('--risk-from',   '#052010');
+    root.style.setProperty('--risk-to',     '#072e16');
+    root.style.setProperty('--risk-border', 'rgba(104,211,145,0.25)');
+    root.style.setProperty('--risk-glow',   'rgba(72,187,120,0.18)');
+    document.getElementById('resultIcon').innerHTML = '<i class="bi bi-shield-fill-check" style="color:#68d391"></i>';
+  }
+
+  /* ── Animate confidence bar ──────────────────────────────────────────── */
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById('confFill').style.width = '{{ confidence }}%';
+    }, 300);
+  });
+
+  /* ── Particle background ─────────────────────────────────────────────── */
+  (function() {
+    const canvas = document.getElementById('bgCanvas');
+    const ctx    = canvas.getContext('2d');
+    let W, H, particles = [];
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+    for (let i = 0; i < 50; i++) {
+      particles.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.2+0.3,
+                       vx:(Math.random()-.5)*.25, vy:(Math.random()-.5)*.25, a:Math.random()*.4+0.1 });
+    }
+    function draw() {
+      ctx.clearRect(0,0,W,H);
+      const col = isDanger ? '252,129,129' : '99,179,237';
+      particles.forEach(p => {
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0)p.x=W; if(p.x>W)p.x=0; if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(${col},${p.a})`; ctx.fill();
+      });
+      for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++) {
+        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<110){ ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle=`rgba(${col},${0.05*(1-d/110)})`; ctx.lineWidth=1; ctx.stroke(); }
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+  </script>
+</body>
+</html>

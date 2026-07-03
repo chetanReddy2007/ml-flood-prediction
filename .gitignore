@@ -1,0 +1,47 @@
+# ── Python ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.so
+
+# ── Virtual Environment ─────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Saved model artefacts (large binary files) ─────────────────────
+# Uncomment the lines below if you do NOT want to commit the .pkl files
+# Model/flood_model.pkl
+# Model/scaler.pkl
+
+# ── Distribution / packaging ────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ── Environment variables ───────────────────────────────────────────
+.env
+.env.*
+*.env
+
+# ── IDE & OS files ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Testing / Coverage ──────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+*.coveragerc
+
+# ── Locust results ──────────────────────────────────────────────────
+locust_*.csv
+locust_*.html

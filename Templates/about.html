@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="About FloodSense — an ML-powered early-warning flood prediction system." />
+  <title>FloodSense | About the Project</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:      #050b18;
+      --surface: #0d1526;
+      --surface2:#111e35;
+      --border:  rgba(99,179,237,0.12);
+      --accent:  #63b3ed;
+      --purple:  #9f7aea;
+      --text:    #e2e8f0;
+      --muted:   #718096;
+      --glow:    rgba(99,179,237,0.15);
+      --success: #68d391;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+    #bgCanvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:0.4; }
+
+    /* Navbar */
+    .navbar { position:sticky; top:0; z-index:1000; background:rgba(5,11,24,0.85)!important; backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:1rem 0; }
+    .navbar-brand { font-weight:900; font-size:1.5rem; letter-spacing:-1px; color:#fff!important; }
+    .navbar-brand .brand-flood { color:var(--accent); }
+    .nav-link { color:var(--muted)!important; font-weight:500; font-size:0.9rem; padding:0.5rem 1rem!important; border-radius:8px; transition:all .2s; }
+    .nav-link:hover, .nav-link.active { color:var(--accent)!important; background:var(--glow); }
+
+    /* Page wrapper */
+    .page-wrap { position:relative; z-index:1; }
+
+    /* Hero */
+    .about-hero {
+      padding: 5rem 0 4rem;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(99,179,237,0.07) 0%, transparent 70%);
+    }
+    .about-badge {
+      display:inline-flex; align-items:center; gap:0.5rem;
+      background:rgba(99,179,237,0.08); border:1px solid rgba(99,179,237,0.25);
+      border-radius:100px; padding:0.4rem 1.2rem;
+      font-size:0.78rem; font-weight:700; color:var(--accent);
+      text-transform:uppercase; letter-spacing:0.06em;
+      margin-bottom:1.5rem;
+    }
+    .about-title {
+      font-size: clamp(2rem,5vw,3.2rem);
+      font-weight:900; letter-spacing:-2px; margin-bottom:1rem;
+    }
+    .about-title .grad { background:linear-gradient(135deg,#63b3ed,#9f7aea); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .about-lead { font-size:1rem; color:var(--muted); max-width:540px; margin:0 auto; line-height:1.75; }
+
+    /* Section spacing */
+    .content-section { padding:5rem 0; }
+    .content-section + .content-section { border-top:1px solid var(--border); }
+
+    /* Section label */
+    .section-eyebrow {
+      font-size:0.72rem; font-weight:700; color:var(--accent);
+      text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.75rem;
+      display:flex; align-items:center; gap:0.4rem;
+    }
+    .section-heading {
+      font-size:1.7rem; font-weight:900; letter-spacing:-1px;
+      color:#fff; margin-bottom:1rem;
+    }
+    .section-body { font-size:0.93rem; color:var(--muted); line-height:1.8; }
+    .section-body + .section-body { margin-top:1rem; }
+
+    /* Glass card */
+    .g-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:20px; overflow:hidden;
+      transition:border-color 0.2s, transform 0.2s;
+    }
+    .g-card:hover { border-color:rgba(99,179,237,0.3); transform:translateY(-4px); }
+
+    /* Feature list */
+    .feat-list { list-style:none; }
+    .feat-list li {
+      display:flex; align-items:flex-start; gap:0.75rem;
+      padding:0.75rem 0; border-bottom:1px solid var(--border);
+      font-size:0.88rem; color:var(--muted); line-height:1.5;
+    }
+    .feat-list li:last-child { border-bottom:none; }
+    .feat-list li .check {
+      width:22px; height:22px; border-radius:6px; flex-shrink:0; margin-top:0.1rem;
+      background:rgba(104,211,145,0.12); border:1px solid rgba(104,211,145,0.25);
+      display:flex; align-items:center; justify-content:center;
+      color:var(--success); font-size:0.65rem;
+    }
+    .feat-list li strong { color:var(--text); }
+
+    /* Tech pill grid */
+    .tech-grid { display:flex; flex-wrap:wrap; gap:0.6rem; }
+    .tech-pill {
+      display:inline-flex; align-items:center; gap:0.4rem;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:0.5rem 0.9rem;
+      font-size:0.8rem; font-weight:600; color:var(--text);
+      transition:all 0.2s;
+    }
+    .tech-pill:hover { border-color:rgba(99,179,237,0.4); color:var(--accent); background:#131f3a; }
+    .tech-pill i { color:var(--accent); }
+
+    /* Pipeline steps */
+    .pipeline {
+      display:flex; flex-direction:column; gap:0;
+      border:1px solid var(--border); border-radius:16px; overflow:hidden;
+    }
+    .pipe-step {
+      display:grid; grid-template-columns:56px 1fr;
+      background:var(--surface); border-bottom:1px solid var(--border);
+      transition:background 0.15s;
+    }
+    .pipe-step:last-child { border-bottom:none; }
+    .pipe-step:hover { background:var(--surface2); }
+    .pipe-num {
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.75rem; font-weight:900; color:var(--accent);
+      border-right:1px solid var(--border);
+      background:rgba(99,179,237,0.04);
+    }
+    .pipe-content { padding:1.25rem 1.5rem; }
+    .pipe-title { font-size:0.9rem; font-weight:700; color:#fff; margin-bottom:0.25rem; }
+    .pipe-desc  { font-size:0.8rem; color:var(--muted); line-height:1.6; }
+    code { background:rgba(99,179,237,0.1); color:var(--accent); border-radius:5px; padding:0.1em 0.4em; font-size:0.85em; }
+
+    /* Stats strip */
+    .stats-strip {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:16px; padding:2rem;
+      display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+    }
+    @media(max-width:767px) { .stats-strip { grid-template-columns:repeat(2,1fr); } }
+    .stat-block { text-align:center; padding:1rem; }
+    .stat-block .s-val { font-size:2rem; font-weight:900; color:#fff; letter-spacing:-1px; }
+    .stat-block .s-acc { font-size:1rem; font-weight:900; background:linear-gradient(135deg,#63b3ed,#9f7aea); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .stat-block .s-lbl { font-size:0.72rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-top:0.15rem; }
+
+    /* CTA */
+    .cta-section { padding:5rem 0; text-align:center; }
+    .btn-cta {
+      display:inline-flex; align-items:center; gap:0.6rem;
+      background:linear-gradient(135deg,#4299e1,#9f7aea);
+      border:none; border-radius:14px; padding:1rem 2.5rem;
+      font-size:1rem; font-weight:800; color:#fff;
+      text-decoration:none; transition:all 0.2s;
+      box-shadow:0 4px 20px rgba(66,153,225,0.35);
+    }
+    .btn-cta:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(66,153,225,0.5); color:#fff; }
+
+    /* Footer */
+    footer { position:relative; z-index:1; border-top:1px solid var(--border); padding:1.5rem 0; text-align:center; color:var(--muted); font-size:0.82rem; }
+    footer a { color:var(--accent); text-decoration:none; }
+    footer a:hover { text-decoration:underline; }
+  </style>
+</head>
+
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-water me-2" style="color:var(--accent)"></i>
+        <span class="brand-flood">Flood</span>Sense
+      </a>
+      <button class="navbar-toggler border-0 text-white" type="button"
+              data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <i class="bi bi-list fs-4"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto gap-1">
+          <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-grid-1x2-fill me-1"></i>Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/about"><i class="bi bi-info-circle me-1"></i>About</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+
+    <!-- Hero -->
+    <section class="about-hero">
+      <div class="container">
+        <div class="about-badge"><i class="bi bi-info-circle-fill"></i> Project Overview</div>
+        <h1 class="about-title">About <span class="grad">FloodSense</span></h1>
+        <p class="about-lead">
+          An intelligent flood early-warning system powered by XGBoost machine learning,
+          built to help communities respond to flood risk before it's too late.
+        </p>
+      </div>
+    </section>
+
+    <!-- Stats strip -->
+    <section style="position:relative;z-index:1;padding:0 0 4rem;">
+      <div class="container">
+        <div class="stats-strip">
+          <div class="stat-block">
+            <div class="s-val">5K+</div>
+            <div class="s-lbl">Training Samples</div>
+          </div>
+          <div class="stat-block">
+            <div class="s-val s-acc">95.1%</div>
+            <div class="s-lbl">Model Accuracy</div>
+          </div>
+          <div class="stat-block">
+            <div class="s-val">300</div>
+            <div class="s-lbl">Boosting Rounds</div>
+          </div>
+          <div class="stat-block">
+            <div class="s-val">5</div>
+            <div class="s-lbl">Feature Inputs</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mission & Features -->
+    <section class="content-section">
+      <div class="container">
+        <div class="row g-5 align-items-start">
+
+          <!-- Mission -->
+          <div class="col-lg-6">
+            <div class="section-eyebrow"><i class="bi bi-bullseye"></i> Mission</div>
+            <h2 class="section-heading">Why FloodSense?</h2>
+            <p class="section-body">
+              Floods are among the world's most destructive natural disasters. Traditional
+              warning systems often react too late. FloodSense bridges that gap by offering
+              an instant, ML-powered assessment based on current weather parameters,
+              helping communities, engineers, and emergency teams make data-driven decisions
+              <em>before</em> a flood event unfolds.
+            </p>
+            <p class="section-body">
+              The system analyses five key meteorological indicators through a trained
+              XGBoost classifier and outputs both a risk verdict and a probabilistic
+              confidence score — giving responders the clarity they need.
+            </p>
+          </div>
+
+          <!-- Features -->
+          <div class="col-lg-6">
+            <div class="section-eyebrow"><i class="bi bi-star-fill"></i> Key Features</div>
+            <h2 class="section-heading">What It Offers</h2>
+            <ul class="feat-list">
+              <li>
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <div><strong>Real-time prediction</strong> — sub-second response with XGBoost inference</div>
+              </li>
+              <li>
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <div><strong>Confidence score</strong> — probabilistic output, not just a binary label</div>
+              </li>
+              <li>
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <div><strong>5-feature model</strong> — annual & seasonal rainfall, visibility, temperature, humidity</div>
+              </li>
+              <li>
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <div><strong>Responsive dark UI</strong> — works on desktop, tablet & mobile</div>
+              </li>
+              <li>
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <div><strong>Production-ready</strong> — Gunicorn + Procfile for cloud deployment</div>
+              </li>
+              <li>
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <div><strong>Load-tested</strong> — Locust scripts included for scalability validation</div>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="content-section">
+      <div class="container">
+        <div class="row g-5 align-items-start">
+          <div class="col-lg-5">
+            <div class="section-eyebrow"><i class="bi bi-layers-fill"></i> Stack</div>
+            <h2 class="section-heading">Technology Used</h2>
+            <p class="section-body">
+              Every component was chosen for reliability, ecosystem maturity, and
+              ease of deployment in both development and production environments.
+            </p>
+          </div>
+          <div class="col-lg-7">
+            <div class="tech-grid">
+              <span class="tech-pill"><i class="bi bi-filetype-py"></i> Python 3.14</span>
+              <span class="tech-pill"><i class="bi bi-server"></i> Flask 3.1</span>
+              <span class="tech-pill"><i class="bi bi-cpu-fill"></i> XGBoost 3.3</span>
+              <span class="tech-pill"><i class="bi bi-grid-3x2-gap"></i> Scikit-learn 1.9</span>
+              <span class="tech-pill"><i class="bi bi-table"></i> Pandas 3.0</span>
+              <span class="tech-pill"><i class="bi bi-calculator"></i> NumPy 2.5</span>
+              <span class="tech-pill"><i class="bi bi-save"></i> Joblib</span>
+              <span class="tech-pill"><i class="bi bi-bootstrap-fill"></i> Bootstrap 5</span>
+              <span class="tech-pill"><i class="bi bi-hdd-stack"></i> Gunicorn 26</span>
+              <span class="tech-pill"><i class="bi bi-speedometer2"></i> Locust 2.44</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ML Pipeline -->
+    <section class="content-section">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="text-center mb-4">
+              <div class="section-eyebrow justify-content-center"><i class="bi bi-diagram-3-fill"></i> Pipeline</div>
+              <h2 class="section-heading">How the Model Works</h2>
+            </div>
+            <div class="pipeline">
+              <div class="pipe-step">
+                <div class="pipe-num">01</div>
+                <div class="pipe-content">
+                  <div class="pipe-title">Synthetic Dataset Generation</div>
+                  <div class="pipe-desc">5,000 weather samples are generated using realistic meteorological distributions. Labels are assigned via domain-expert rules (e.g., high annual rainfall + high humidity = High Risk) with 5% random label noise to prevent overfitting.</div>
+                </div>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">02</div>
+                <div class="pipe-content">
+                  <div class="pipe-title">Pre-processing & Scaling</div>
+                  <div class="pipe-desc">Missing values are imputed with column medians. A <code>StandardScaler</code> is fit <em>only on training data</em> to normalise all 5 features — preventing data leakage into the test set.</div>
+                </div>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">03</div>
+                <div class="pipe-content">
+                  <div class="pipe-title">XGBoost Classifier Training</div>
+                  <div class="pipe-desc">300 boosting rounds with learning rate 0.05, max depth 6, 80% column subsampling. The model is trained on 80% of the data and validated on 20%, achieving <strong style="color:var(--success)">95.1% accuracy</strong>.</div>
+                </div>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">04</div>
+                <div class="pipe-content">
+                  <div class="pipe-title">Artefact Persistence</div>
+                  <div class="pipe-desc">The trained model and scaler are saved as <code>.pkl</code> files using <code>joblib</code>. They are loaded once at Flask startup to minimise per-request latency.</div>
+                </div>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">05</div>
+                <div class="pipe-content">
+                  <div class="pipe-title">Real-time Inference</div>
+                  <div class="pipe-desc">User inputs are scaled with the saved scaler and passed to the model. <code>predict_proba()</code> returns the probability vector — giving a confidence % alongside the binary verdict.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+      <div class="container">
+        <p class="mb-4" style="color:var(--muted);font-size:0.95rem;">Ready to run a prediction?</p>
+        <a href="/" class="btn-cta">
+          <i class="bi bi-lightning-charge-fill"></i> Try the Prediction Tool
+        </a>
+      </div>
+    </section>
+
+  </div><!-- /page-wrap -->
+
+  <footer>
+    <div class="container">
+      &copy; 2024 <strong style="color:var(--text)">FloodSense</strong> &mdash;
+      ML-Powered Early Warning System &nbsp;&bull;&nbsp;
+      <a href="/">Dashboard</a>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  (function() {
+    const canvas=document.getElementById('bgCanvas'), ctx=canvas.getContext('2d');
+    let W,H,particles=[];
+    function resize(){W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight;}
+    resize(); window.addEventListener('resize',resize);
+    for(let i=0;i<55;i++) particles.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+0.3,vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28,a:Math.random()*.4+0.1});
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(99,179,237,${p.a})`;ctx.fill();});
+      for(let i=0;i<particles.length;i++)for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<115){ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(99,179,237,${0.05*(1-d/115)})`;ctx.lineWidth=1;ctx.stroke();}}
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+  </script>
+</body>
+</html>
